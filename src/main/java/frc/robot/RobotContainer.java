@@ -58,8 +58,8 @@ public class RobotContainer {
         // Pilotun kafası karışmasın diye robot hep sahaya göre sürülür.
         () -> true 
     ));
-    
-// PATHPLANNER NAMED COMMANDS (İsimli Komutlar)
+
+    // PATHPLANNER NAMED COMMANDS (İsimli Komutlar)
     // Otonom çizerken "IntakeAl" dediğinde hangi kod çalışsın?
     // Şimdilik boş, ama ileride buraya Intake komutlarını ekleyeceğiz.
     // NamedCommands.registerCommand("IntakeAl", new IntakeCommand());
@@ -99,6 +99,7 @@ public class RobotContainer {
    * Şimdilik null döndürüyoruz, sonra PathPlanner ekleyeceğiz.
    */
   public Command getAutonomousCommand() {
-    return null;
+    // Seçili otonomu döndür
+    return m_autoChooser.getSelected();
   }
 }
