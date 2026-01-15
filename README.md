@@ -5,7 +5,7 @@
 
 Bu depo (repo), **Team Sirius**'un 2026 FRC sezonu robotunun kontrol yazılımını içerir.
 
-Kod tabanı, **Ranix Mimarisi** üzerine inşa edilmiştir. Bu mimari; spagetti kodu önlemek, modülerliği artırmak ve sahadaki değişikliklere (dişli oranı, motor değişimi vb.) saniyeler içinde adapte olabilmek için tasarlanmıştır.
+Bu mimari; spagetti kodu önlemek, modülerliği artırmak ve sahadaki değişikliklere (dişli oranı, motor değişimi vb.) saniyeler içinde adapte olabilmek için tasarlanmıştır.
 
 ### Mimari Özellikler (Ranix Architecture)
 
