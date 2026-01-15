@@ -105,3 +105,13 @@ wpi.java.configureTestTasks(test)
 tasks.withType(JavaCompile) {
     options.compilerArgs.add '-XDstringConcat=inline'
 }
+// Java Derleyicisi için UTF-8 Ayarı
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+    options.compilerArgs.add('-Xlint:deprecation') // O uyarıların detayını görmek için
+}
+
+// Javadoc oluştururken de Türkçe karakter patlamasın
+tasks.withType(Javadoc) {
+    options.encoding = 'UTF-8'
+}

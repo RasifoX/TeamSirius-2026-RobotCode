@@ -1,63 +1,104 @@
-// Copyright (c) FIRST and other WPILib contributors.
-// Open Source Software; you can modify and/or share it under the terms of
-// the WPILib BSD license file in the root directory of this project.
-
 package frc.robot;
 
-import frc.robot.Constants.OperatorConstants;
-import frc.robot.commands.Autos;
-import frc.robot.commands.ExampleCommand;
-import frc.robot.subsystems.ExampleSubsystem;
+import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
-import edu.wpi.first.wpilibj2.command.button.Trigger;
+import edu.wpi.first.wpilibj2.command.RunCommand;
+import edu.wpi.first.wpilibj2.command.button.JoystickButton;
+import frc.robot.Constants.OIConstants;
+import frc.robot.commands.SwerveJoystickCmd;
+import frc.robot.subsystems.DriveSubsystem;
+import com.pathplanner.lib.auto.AutoBuilder;
+import com.pathplanner.lib.auto.NamedCommands;
+import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 /**
- * This class is where the bulk of the robot should be declared. Since Command-based is a
- * "declarative" paradigm, very little robot logic should actually be handled in the {@link Robot}
- * periodic methods (other than the scheduler calls). Instead, the structure of the robot (including
- * subsystems, commands, and trigger mappings) should be declared here.
+ * ROBOT CONTAINER - KOKPİT VE KABLOLAMA MERKEZİ
+ * * Alt sistemler (Subsystems), Komutlar (Commands) ve Joystickler burada tanımlanır.
+ * * "Hangi tuşa basınca ne olsun?" sorusunun cevabı buradadır.
  */
 public class RobotContainer {
-  // The robot's subsystems and commands are defined here...
-  private final ExampleSubsystem m_exampleSubsystem = new ExampleSubsystem();
+  
+  // 1. ALT SİSTEMLERİ YARAT
+  // Robotun fiziksel parçalarını (Drivetrain) burada oluşturuyoruz.
+  private final DriveSubsystem m_robotDrive = new DriveSubsystem();
 
-  // Replace with CommandPS4Controller or CommandJoystick if needed
-  private final CommandXboxController m_driverController =
-      new CommandXboxController(OperatorConstants.kDriverControllerPort);
+  // 2. KUMANDAYI YARAT
+  // Sürücü kumandası (Driver Controller). USB 0 portuna takılı olmalı.
+  private final XboxController m_driverController = new XboxController(OIConstants.kDriverControllerPort);
 
-  /** The container for the robot. Contains subsystems, OI devices, and commands. */
+  // Otonom Seçici (Dashboard'da görünecek kutu)
+  private final SendableChooser<Command> m_autoChooser;
+
+  /**
+   * CONSTRUCTOR
+   * Robot açıldığında çalışır ve varsayılan ayarları yapar.
+   */
   public RobotContainer() {
-    // Configure the trigger bindings
+    
+    // --- VARSAYILAN SÜRÜŞ KOMUTU (DEFAULT DRIVE) ---
+    // Hiçbir tuşa basılmasa bile, robot sürekli Joystick'i dinlesin.
+    // Oluşturduğumuz "SwerveJoystickCmd" sınıfını burada bağlıyoruz.
+    m_robotDrive.setDefaultCommand(new SwerveJoystickCmd(
+        m_robotDrive,
+        
+        // 1. İleri/Geri Hız (Sol Stick Y Ekseni)
+        // Joystick ileri itilince negatif değer verir, o yüzden (-) ile çarpıp tersliyoruz.
+        () -> -m_driverController.getLeftY(), 
+        
+        // 2. Sağ/Sol Hız (Sol Stick X Ekseni)
+        // Sola itince negatif verir, WPILib'de Sol pozitiftir (Y ekseni). O yüzden tersliyoruz.
+        () -> -m_driverController.getLeftX(), 
+        
+        // 3. Dönüş Hızı (Sağ Stick X Ekseni)
+        // Sağa itince pozitif verir ama biz Saat Yönü Tersine (CCW) pozitif kabul ederiz. Tersliyoruz.
+        () -> -m_driverController.getRightX(), 
+        
+        // 4. Field Oriented Modu (Her zaman aktif)
+        // Pilotun kafası karışmasın diye robot hep sahaya göre sürülür.
+        () -> true 
+    ));
+    
+// PATHPLANNER NAMED COMMANDS (İsimli Komutlar)
+    // Otonom çizerken "IntakeAl" dediğinde hangi kod çalışsın?
+    // Şimdilik boş, ama ileride buraya Intake komutlarını ekleyeceğiz.
+    // NamedCommands.registerCommand("IntakeAl", new IntakeCommand());
+    
+    // OTONOM SEÇİCİYİ OLUŞTUR
+    // PathPlanner "deploy/pathplanner/autos" klasöründeki dosyaları okur.
+    m_autoChooser = AutoBuilder.buildAutoChooser();
+    
+    // Dashboard'a koy
+    SmartDashboard.putData("Auto Chooser", m_autoChooser);
+
+    // Tuş atamalarını yap
     configureBindings();
   }
 
   /**
-   * Use this method to define your trigger->command mappings. Triggers can be created via the
-   * {@link Trigger#Trigger(java.util.function.BooleanSupplier)} constructor with an arbitrary
-   * predicate, or via the named factories in {@link
-   * edu.wpi.first.wpilibj2.command.button.CommandGenericHID}'s subclasses for {@link
-   * CommandXboxController Xbox}/{@link edu.wpi.first.wpilibj2.command.button.CommandPS4Controller
-   * PS4} controllers or {@link edu.wpi.first.wpilibj2.command.button.CommandJoystick Flight
-   * joysticks}.
+   * TUŞ ATAMALARI (Button Bindings)
+   * Joystick üzerindeki tuşlara görev atıyoruz.
    */
   private void configureBindings() {
-    // Schedule `ExampleCommand` when `exampleCondition` changes to `true`
-    new Trigger(m_exampleSubsystem::exampleCondition)
-        .onTrue(new ExampleCommand(m_exampleSubsystem));
-
-    // Schedule `exampleMethodCommand` when the Xbox controller's B button is pressed,
-    // cancelling on release.
-    m_driverController.b().whileTrue(m_exampleSubsystem.exampleMethodCommand());
+    
+    // GYRO SIFIRLAMA (Y Tuşu)
+    // Maç sırasında robotun "Önü" karışırsa, pilot Y tuşuna basıp düzeltir.
+    new JoystickButton(m_driverController, XboxController.Button.kY.value)
+        .onTrue(new RunCommand(() -> m_robotDrive.zeroHeading(), m_robotDrive));
+        
+    // SAVUNMA MODU / X-STANCE (A Tuşu)
+    // Pilot A tuşuna basılı tuttuğu sürece tekerlekler X şeklini alır ve kilitlenir.
+    // Rakip robot bizi itmeye çalışırsa yerimizden kıpırdamayız.
+    new JoystickButton(m_driverController, XboxController.Button.kA.value)
+        .whileTrue(new RunCommand(() -> m_robotDrive.stopModules(), m_robotDrive));
   }
 
   /**
-   * Use this to pass the autonomous command to the main {@link Robot} class.
-   *
-   * @return the command to run in autonomous
+   * OTONOM KOMUTU
+   * Maçın ilk 15 saniyesinde çalışacak komut.
+   * Şimdilik null döndürüyoruz, sonra PathPlanner ekleyeceğiz.
    */
   public Command getAutonomousCommand() {
-    // An example command will be run in autonomous
-    return Autos.exampleAuto(m_exampleSubsystem);
+    return null;
   }
 }
