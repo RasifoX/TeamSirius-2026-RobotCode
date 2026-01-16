@@ -11,7 +11,7 @@ import frc.robot.subsystems.DriveSubsystem;
  * * İleride "PathPlanner" buraya entegre edilecek.
  */
 public final class Autos {
-  
+
   /**
    * Örnek Otonom Komutu
    * Şimdilik hiçbir şey yapmıyor (Idle).

@@ -1,7 +1,5 @@
 package frc.robot.subsystems;
 
-import com.ctre.phoenix6.hardware.Pigeon2;
-
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
@@ -18,51 +16,54 @@ import com.pathplanner.lib.config.PIDConstants;
 import com.pathplanner.lib.config.RobotConfig;
 import com.pathplanner.lib.controllers.PPHolonomicDriveController;
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.Preferences;
+import edu.wpi.first.wpilibj.RobotController;
 
 /**
  * DRIVE SUBSYSTEM - ROBOTUN OMURİLİĞİ
  * * 4 Swerve Modülünü ve Gyro'yu (Pigeon2) yönetir.
- * * Joystick'ten gelen ham veriyi, tekerleklerin anlayacağı hıza ve açıya çevirir.
+ * * Joystick'ten gelen ham veriyi, tekerleklerin anlayacağı hıza ve açıya
+ * çevirir.
  * * Sahadaki konumunu (Odometry) sürekli takip eder.
  */
 public class DriveSubsystem extends SubsystemBase {
-  
+
   // =====================================================================
   // 1. DONANIM TANIMLAMALARI (Hardware)
   // Constants dosyasındaki ID ve Offsetleri kullanarak modülleri yaratıyoruz.
   // =====================================================================
-  
+
   // Sol Ön (Front Left) Modülü
   private final SwerveModule m_frontLeft = new SwerveModule(
-      PortConstants.kFrontLeftDriveID, 
-      PortConstants.kFrontLeftSteerID, 
-      PortConstants.kFrontLeftCANCoderID, 
-      PortConstants.kFrontLeftOffset);
+      PortConstants.kFrontLeftDriveID,
+      PortConstants.kFrontLeftSteerID,
+      PortConstants.kFrontLeftCANCoderID,
+      Preferences.getDouble("FL_Offset", PortConstants.kFrontLeftOffset));
 
   // Sağ Ön (Front Right) Modülü
   private final SwerveModule m_frontRight = new SwerveModule(
-      PortConstants.kFrontRightDriveID, 
-      PortConstants.kFrontRightSteerID, 
-      PortConstants.kFrontRightCANCoderID, 
-      PortConstants.kFrontRightOffset);
+      PortConstants.kFrontRightDriveID,
+      PortConstants.kFrontRightSteerID,
+      PortConstants.kFrontRightCANCoderID,
+      Preferences.getDouble("FR_Offset", PortConstants.kFrontRightOffset));
 
-  // Sol Arka (Back Left) Modülü
+  // Sol Arka (Rear Left) Modülü
   private final SwerveModule m_rearLeft = new SwerveModule(
-      PortConstants.kBackLeftDriveID, 
-      PortConstants.kBackLeftSteerID, 
-      PortConstants.kBackLeftCANCoderID, 
-      PortConstants.kBackLeftOffset);
+      PortConstants.kRearLeftDriveID,
+      PortConstants.kRearLeftSteerID,
+      PortConstants.kRearLeftCANCoderID,
+      Preferences.getDouble("RL_Offset", PortConstants.kRearLeftOffset));
 
-  // Sağ Arka (Back Right) Modülü
+  // Sağ Arka (Rear Right) Modülü
   private final SwerveModule m_rearRight = new SwerveModule(
-      PortConstants.kBackRightDriveID, 
-      PortConstants.kBackRightSteerID, 
-      PortConstants.kBackRightCANCoderID, 
-      PortConstants.kBackRightOffset);
+      PortConstants.kRearRightDriveID,
+      PortConstants.kRearRightSteerID,
+      PortConstants.kRearRightCANCoderID,
+      Preferences.getDouble("RR_Offset", PortConstants.kRearRightOffset));
 
-  // GYRO (Pusula) - CTRE Pigeon 2.0
+  // GYRO (Pusula)
   // Robotun sahada nereye baktığını (Heading) söyler.
-  private final Pigeon2 m_gyro = new Pigeon2(DriveConstants.kPigeonID);
+  private final GyroIO m_gyroIO;
 
   // ODOMETRY (Konum Takipçisi)
   // Robotun (x, y) koordinatını hesaplar.
@@ -75,15 +76,21 @@ public class DriveSubsystem extends SubsystemBase {
   public DriveSubsystem() {
     // 1. Gyro'yu sıfırla. Robot başlangıçta karşıya bakıyor kabul edilir.
     // (Maç başında robotu nasıl koyduğun çok önemlidir!)
-    m_gyro.reset();
-    
+    NavXIO navx = new NavXIO();
+    if (navx.isConnected()) {
+      m_gyroIO = navx;
+      System.out.println("[KOKPİT] NavX Aktif!");
+    } else {
+      m_gyroIO = new Pigeon2IO(DriveConstants.kPigeonID);
+      System.out.println("[KOKPİT] Pigeon2 Aktif!");
+    }
+
     // 2. Odometry sistemini başlat.
     // Başlangıç noktası (0,0) ve açısı 0 derece olarak ayarlanır.
     m_odometry = new SwerveDriveOdometry(
-        DriveConstants.kDriveKinematics, 
-        getRotation2d(), 
-        getModulePositions()
-    );
+        DriveConstants.kDriveKinematics,
+        getRotation2d(),
+        getModulePositions());
 
     // --- PATHPLANNER KURULUMU (AUTOBUILDER) ---
     try {
@@ -93,22 +100,22 @@ public class DriveSubsystem extends SubsystemBase {
       RobotConfig config = RobotConfig.fromGUISettings();
 
       AutoBuilder.configure(
-          this::getPose,           // Robot şu an nerede? (Pose2d)
-          this::resetOdometry,     // Robotun konumu nasıl sıfırlanır?
-          this::getChassisSpeeds,  // Robot şu an ne hızla gidiyor? (Bunu aşağıda yazacağız)
+          this::getPose, // Robot şu an nerede? (Pose2d)
+          this::resetOdometry, // Robotun konumu nasıl sıfırlanır?
+          this::getChassisSpeeds, // Robot şu an ne hızla gidiyor? (Bunu aşağıda yazacağız)
           (speeds, feedforwards) -> driveRobotRelative(speeds), // Robotu sür (ChassisSpeeds ile)
           new PPHolonomicDriveController(
               new PIDConstants(5.0, 0.0, 0.0), // Translation PID (İlerleme hatasını düzelt)
-              new PIDConstants(5.0, 0.0, 0.0)  // Rotation PID (Dönüş hatasını düzelt)
+              new PIDConstants(5.0, 0.0, 0.0) // Rotation PID (Dönüş hatasını düzelt)
           ),
           config,
           () -> {
-              // Kırmızı ittifak isek yolu otomatik ters çevir (Mirror)
-              var alliance = DriverStation.getAlliance();
-              if (alliance.isPresent()) {
-                  return alliance.get() == DriverStation.Alliance.Red;
-              }
-              return false;
+            // Kırmızı ittifak isek yolu otomatik ters çevir (Mirror)
+            var alliance = DriverStation.getAlliance();
+            if (alliance.isPresent()) {
+              return alliance.get() == DriverStation.Alliance.Red;
+            }
+            return false;
           },
           this // Gereksinim (Subsystem)
       );
@@ -124,36 +131,72 @@ public class DriveSubsystem extends SubsystemBase {
    */
   @Override
   public void periodic() {
-    // 1. Robotun konumunu güncelle.
-    // Gyro açısı + Tekerleklerin ne kadar döndüğü = Yeni Konum
-    m_odometry.update(getRotation2d(), getModulePositions());
-    
-    // 2. Sürücü için Dashboard'a veri bas.
-    SmartDashboard.putNumber("Robot Heading", getHeading());
-    SmartDashboard.putString("Pose", getPose().toString());
+    m_odometry.update(m_gyroIO.getRotation2d(), getModulePositions());
+
+    // --- UÇAK KONSOLU DIAGNOSTICS ---
+    updateDashboard();
+
+    // --- DINAMIK AKIM KORUMASI ---
+    // Voltaj 10V altına düşerse akımı kıs, robot kapanmasın (Brownout protection)
+    double currentLimit = RobotController.getBatteryVoltage() < 10.5 ? 30.0 : 50.0;
+    updateDriveCurrentLimits(currentLimit);
+  }
+
+  private void updateDashboard() {
+    SmartDashboard.putBoolean("Cockpit/Gyro OK", m_gyroIO.isConnected());
+    SmartDashboard.putBoolean("Cockpit/DriveStick OK", DriverStation.isJoystickConnected(0));
+    // Isınan motoru anında yakala
+    SmartDashboard.putNumber("Cockpit/Max Motor Temp", getMaxModuleTemp());
+  }
+
+  // OFSETLERI CANLI KAYDETME (Pit alanında hayat kurtarır)
+  public void saveOffsets() {
+    Preferences.setDouble("FL_Offset", m_frontLeft.getAbsolutePosition());
+    Preferences.setDouble("FR_Offset", m_frontRight.getAbsolutePosition());
+
+    Preferences.setDouble("RL_Offset", m_rearLeft.getAbsolutePosition());
+    Preferences.setDouble("RR_Offset", m_rearRight.getAbsolutePosition());
+
+    System.out.println("[OK] Ofsetler RoboRIO hafızasına kazındı!");
+  }
+
+  // Akım limitlerini tüm modüllere basar
+  private void updateDriveCurrentLimits(double amps) {
+    m_frontLeft.setDriveCurrentLimit(amps);
+    m_frontRight.setDriveCurrentLimit(amps);
+    m_rearLeft.setDriveCurrentLimit(amps);
+    m_rearRight.setDriveCurrentLimit(amps);
+  }
+
+  // En sıcak modülün sıcaklığını döndürür
+  private double getMaxModuleTemp() {
+    return Math.max(
+        Math.max(m_frontLeft.getTemp(), m_frontRight.getTemp()),
+        Math.max(m_rearLeft.getTemp(), m_rearRight.getTemp()));
   }
 
   /**
    * ANA SÜRÜŞ FONKSİYONU (Drive Method)
    * Joystick komutlarının işlendiği yer.
-   * * @param xSpeed    İleri/Geri Hız (m/s)
-   * @param ySpeed    Sağ/Sol Hız (m/s)
-   * @param rot       Dönüş Hızı (rad/s)
+   * * @param xSpeed İleri/Geri Hız (m/s)
+   * 
+   * @param ySpeed        Sağ/Sol Hız (m/s)
+   * @param rot           Dönüş Hızı (rad/s)
    * @param fieldRelative True: Sahaya göre sür (Önerilen), False: Robota göre sür
    */
   public void drive(double xSpeed, double ySpeed, double rot, boolean fieldRelative) {
-    
+
     // 1. KİNEMATİK HESAPLAMA
     // Joystick'ten gelen hızları (ChassisSpeeds), 4 tekerleğin yapması gereken
     // hız ve açılara (SwerveModuleState) dönüştürür.
     var swerveModuleStates = DriveConstants.kDriveKinematics.toSwerveModuleStates(
-        fieldRelative 
+        fieldRelative
             ? ChassisSpeeds.fromFieldRelativeSpeeds(xSpeed, ySpeed, rot, getRotation2d())
-            : new ChassisSpeeds(xSpeed, ySpeed, rot)
-    );
+            : new ChassisSpeeds(xSpeed, ySpeed, rot));
 
     // 2. DESATURATION (Hız Dengeleme) - KRİTİK GÜVENLİK
-    // Eğer bir tekerlek fiziksel limitinden (örn: 4.5 m/s) daha hızlı dönmesi gerekirse,
+    // Eğer bir tekerlek fiziksel limitinden (örn: 4.5 m/s) daha hızlı dönmesi
+    // gerekirse,
     // tüm tekerlekleri oranlayarak yavaşlatır. Böylece robotun rotası şaşmaz.
     SwerveDriveKinematics.desaturateWheelSpeeds(swerveModuleStates, DriveConstants.kMaxSpeedMetersPerSecond);
 
@@ -181,11 +224,12 @@ public class DriveSubsystem extends SubsystemBase {
    * Maç sırasında robotun kafası karışırsa sürücü buna basar.
    */
   public void zeroHeading() {
-    m_gyro.reset();
+    m_gyroIO.reset();
   }
 
   /**
    * Robotun şu anki açısını (Heading) döndürür.
+   * 
    * @return Derece (-180 ile 180 arası)
    */
   public double getHeading() {
@@ -197,10 +241,11 @@ public class DriveSubsystem extends SubsystemBase {
    * (Odometry ve Kinematik hesapları bunu kullanır)
    */
   public Rotation2d getRotation2d() {
-    // Pigeon2 bazen sürekli artan değer verir (365, 366...), bunu normalize edebilirsin
+    // Pigeon2 bazen sürekli artan değer verir (365, 366...), bunu normalize
+    // edebilirsin
     // ama Odometry genelde raw veriyi sever.
     // Eğer Gyro ters montajlıysa buraya .unaryMinus() ekle.
-    return DriveConstants.kGyroReversed ? m_gyro.getRotation2d().unaryMinus() : m_gyro.getRotation2d();
+    return DriveConstants.kGyroReversed ? m_gyroIO.getRotation2d().unaryMinus() : m_gyroIO.getRotation2d();
   }
 
   /**
@@ -218,8 +263,7 @@ public class DriveSubsystem extends SubsystemBase {
     m_odometry.resetPosition(
         getRotation2d(),
         getModulePositions(),
-        pose
-    );
+        pose);
   }
 
   /**
@@ -228,10 +272,10 @@ public class DriveSubsystem extends SubsystemBase {
    */
   private SwerveModulePosition[] getModulePositions() {
     return new SwerveModulePosition[] {
-      m_frontLeft.getPosition(),
-      m_frontRight.getPosition(),
-      m_rearLeft.getPosition(),
-      m_rearRight.getPosition()
+        m_frontLeft.getPosition(),
+        m_frontRight.getPosition(),
+        m_rearLeft.getPosition(),
+        m_rearRight.getPosition()
     };
   }
 
@@ -257,10 +301,10 @@ public class DriveSubsystem extends SubsystemBase {
    */
   public SwerveModuleState[] getModuleStates() {
     return new SwerveModuleState[] {
-      m_frontLeft.getState(),
-      m_frontRight.getState(),
-      m_rearLeft.getState(),
-      m_rearRight.getState()
+        m_frontLeft.getState(),
+        m_frontRight.getState(),
+        m_rearLeft.getState(),
+        m_rearRight.getState()
     };
   }
 }

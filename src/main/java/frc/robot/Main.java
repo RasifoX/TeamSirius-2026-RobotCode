@@ -9,7 +9,8 @@ import edu.wpi.first.wpilibj.RobotBase;
  * * Buraya ASLA mantık kodu yazılmaz.
  */
 public final class Main {
-  private Main() {}
+  private Main() {
+  }
 
   public static void main(String... args) {
     // Robot.java sınıfını başlatır.

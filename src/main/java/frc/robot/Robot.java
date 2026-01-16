@@ -10,7 +10,7 @@ import edu.wpi.first.wpilibj2.command.CommandScheduler;
  * * Command-Based yapının kalbi olan "CommandScheduler" burada çalıştırılır.
  */
 public class Robot extends TimedRobot {
-  
+
   private Command m_autonomousCommand;
   private RobotContainer m_robotContainer;
 
@@ -21,15 +21,14 @@ public class Robot extends TimedRobot {
   @Override
   public void robotInit() {
     m_robotContainer = new RobotContainer();
-    
+
     // --- KARA KUTU BAŞLATILIYOR ---
     // RoboRIO'nun içindeki loglamayı başlatır. (USB takılıysa oraya yazar)
     edu.wpi.first.wpilibj.DataLogManager.start();
-    
+
     // DriverStation'dan gelen verileri (Joystick, FMS durumu) de kaydet.
     edu.wpi.first.wpilibj.DriverStation.startDataLog(
-        edu.wpi.first.wpilibj.DataLogManager.getLog()
-    );
+        edu.wpi.first.wpilibj.DataLogManager.getLog());
   }
 
   /**
@@ -48,10 +47,12 @@ public class Robot extends TimedRobot {
    * DISABLED MOD (Robot Bağlı Ama Kapalı)
    */
   @Override
-  public void disabledInit() {}
+  public void disabledInit() {
+  }
 
   @Override
-  public void disabledPeriodic() {}
+  public void disabledPeriodic() {
+  }
 
   /**
    * OTONOM BAŞLANGICI
@@ -70,7 +71,8 @@ public class Robot extends TimedRobot {
    * OTONOM DÖNGÜSÜ
    */
   @Override
-  public void autonomousPeriodic() {}
+  public void autonomousPeriodic() {
+  }
 
   /**
    * TELEOP (SÜRÜCÜ) BAŞLANGICI
@@ -88,7 +90,8 @@ public class Robot extends TimedRobot {
    * TELEOP DÖNGÜSÜ
    */
   @Override
-  public void teleopPeriodic() {}
+  public void teleopPeriodic() {
+  }
 
   /**
    * TEST MODU
@@ -100,5 +103,6 @@ public class Robot extends TimedRobot {
   }
 
   @Override
-  public void testPeriodic() {}
+  public void testPeriodic() {
+  }
 }

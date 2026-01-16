@@ -18,10 +18,11 @@ import frc.robot.subsystems.DriveSubsystem;
 public class SwerveJoystickCmd extends Command {
 
   private final DriveSubsystem m_driveSubsystem;
-  
-  // Joystick Veri Kaynakları (Neden Double değil de Supplier? Çünkü değer sürekli değişiyor)
-  private final Supplier<Double> m_xSpdFunction;      // İleri/Geri
-  private final Supplier<Double> m_ySpdFunction;      // Sağ/Sol
+
+  // Joystick Veri Kaynakları (Neden Double değil de Supplier? Çünkü değer sürekli
+  // değişiyor)
+  private final Supplier<Double> m_xSpdFunction; // İleri/Geri
+  private final Supplier<Double> m_ySpdFunction; // Sağ/Sol
   private final Supplier<Double> m_turningSpdFunction; // Dönüş
   private final Supplier<Boolean> m_fieldOrientedFunction; // Saha Odaklı mı?
 
@@ -32,22 +33,23 @@ public class SwerveJoystickCmd extends Command {
 
   /**
    * CONSTRUCTOR
-   * @param driveSubsystem Sürüş sistemi
-   * @param xSpdFunction İleri hız kaynağı (Joystick Y ekseni)
-   * @param ySpdFunction Yana hız kaynağı (Joystick X ekseni)
-   * @param turningSpdFunction Dönüş kaynağı (Joystick Sağ X ekseni)
+   * 
+   * @param driveSubsystem        Sürüş sistemi
+   * @param xSpdFunction          İleri hız kaynağı (Joystick Y ekseni)
+   * @param ySpdFunction          Yana hız kaynağı (Joystick X ekseni)
+   * @param turningSpdFunction    Dönüş kaynağı (Joystick Sağ X ekseni)
    * @param fieldOrientedFunction Field Oriented modu aktif mi?
    */
   public SwerveJoystickCmd(DriveSubsystem driveSubsystem,
       Supplier<Double> xSpdFunction, Supplier<Double> ySpdFunction, Supplier<Double> turningSpdFunction,
       Supplier<Boolean> fieldOrientedFunction) {
-      
+
     this.m_driveSubsystem = driveSubsystem;
     this.m_xSpdFunction = xSpdFunction;
     this.m_ySpdFunction = ySpdFunction;
     this.m_turningSpdFunction = turningSpdFunction;
     this.m_fieldOrientedFunction = fieldOrientedFunction;
-    
+
     // Slew Rate Limiter Ayarı:
     // Saniyede 3 birim hıza çıkabilir. Yani 0'dan %100 hıza 1/3 saniyede çıkar.
     // Robot çok agresifse bu sayıyı düşür (örn: 1.5), çok hantalsa arttır.
@@ -83,7 +85,7 @@ public class SwerveJoystickCmd extends Command {
     // Örn: Joystick 0.5 ise -> 0.5^3 = 0.125 hız verir. (Yavaş hareket)
     // Örn: Joystick 1.0 ise -> 1.0^3 = 1.0 hız verir. (Tam gaz)
     // Math.copySign, işaretin (+ veya -) kaybolmamasını sağlar.
-    
+
     xSpeed = Math.copySign(Math.pow(xSpeed, 3), xSpeed);
     ySpeed = Math.copySign(Math.pow(ySpeed, 3), ySpeed);
     turningSpeed = Math.copySign(Math.pow(turningSpeed, 3), turningSpeed);
@@ -92,7 +94,7 @@ public class SwerveJoystickCmd extends Command {
     // Ani hız değişimlerini engelle.
     xSpeed = m_xLimiter.calculate(xSpeed) * DriveConstants.kMaxSpeedMetersPerSecond;
     ySpeed = m_yLimiter.calculate(ySpeed) * DriveConstants.kMaxSpeedMetersPerSecond;
-    
+
     // Dönüş hızı daha hassas olduğu için açısal hız sabitiyle çarpıyoruz.
     turningSpeed = m_turningLimiter.calculate(turningSpeed) * DriveConstants.kMaxAngularSpeed;
 
@@ -111,6 +113,6 @@ public class SwerveJoystickCmd extends Command {
   public boolean isFinished() {
     // Bu komut asla kendiliğinden bitmez.
     // Joystick olduğu sürece (Teleop boyunca) çalışmaya devam eder.
-    return false; 
+    return false;
   }
 }
