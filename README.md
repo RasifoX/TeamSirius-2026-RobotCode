@@ -1,5 +1,6 @@
 
 #  Team Sirius 2026 - Robot Code
+***The code in this project is written with the help of AI agents.***
 
 ##  Proje Hakkında
 
