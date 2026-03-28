@@ -5,66 +5,104 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.button.JoystickButton;
 import frc.robot.Constants.OIConstants;
-import frc.robot.commands.AlignToTagCMD;
 import frc.robot.commands.SwerveJoystickCmd;
 import frc.robot.subsystems.DriveSubsystem;
-import frc.robot.subsystems.LimelightSubsystem;
-import frc.robot.subsystems.ShooterSubsystem;
 import com.pathplanner.lib.auto.AutoBuilder;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
+/**
+ * ROBOT CONTAINER - KOKPİT VE KABLOLAMA MERKEZİ
+ * * Alt sistemler (Subsystems), Komutlar (Commands) ve Joystickler burada
+ * tanımlanır.
+ * * "Hangi tuşa basınca ne olsun?" sorusunun cevabı buradadır.
+ */
 public class RobotContainer {
 
-  // 1. ALT SİSTEMLER
+  // 1. ALT SİSTEMLERİ YARAT
+  // Robotun fiziksel parçalarını (Drivetrain) burada oluşturuyoruz.
   private final DriveSubsystem m_robotDrive = new DriveSubsystem();
-  private final LimelightSubsystem m_limelight = new LimelightSubsystem();
-  private final ShooterSubsystem m_shooter = new ShooterSubsystem();
 
-  // 2. KUMANDA
+  // 2. KUMANDAYI YARAT
+  // Sürücü kumandası (Driver Controller). USB 0 portuna takılı olmalı.
   private final XboxController m_driverController = new XboxController(OIConstants.kDriverControllerPort);
+
+  // Otonom Seçici (Dashboard'da görünecek kutu)
   private final SendableChooser<Command> m_autoChooser;
 
+  /**
+   * CONSTRUCTOR
+   * Robot açıldığında çalışır ve varsayılan ayarları yapar.
+   */
   public RobotContainer() {
-    // VARSAYILAN SÜRÜŞ KOMUTU
+
+    // --- VARSAYILAN SÜRÜŞ KOMUTU (DEFAULT DRIVE) ---
+    // Hiçbir tuşa basılmasa bile, robot sürekli Joystick'i dinlesin.
+    // Oluşturduğumuz "SwerveJoystickCmd" sınıfını burada bağlıyoruz.
     m_robotDrive.setDefaultCommand(new SwerveJoystickCmd(
         m_robotDrive,
+
+        // 1. İleri/Geri Hız (Sol Stick Y Ekseni)
+        // Joystick ileri itilince negatif değer verir, o yüzden (-) ile çarpıp
+        // tersliyoruz.
         () -> -m_driverController.getLeftY(),
+
+        // 2. Sağ/Sol Hız (Sol Stick X Ekseni)
+        // Sola itince negatif verir, WPILib'de Sol pozitiftir (Y ekseni). O yüzden
+        // tersliyoruz.
         () -> -m_driverController.getLeftX(),
+
+        // 3. Dönüş Hızı (Sağ Stick X Ekseni)
+        // Sağa itince pozitif verir ama biz Saat Yönü Tersine (CCW) pozitif kabul
+        // ederiz. Tersliyoruz.
         () -> -m_driverController.getRightX(),
+
+        // 4. Field Oriented Modu (Her zaman aktif)
+        // Pilotun kafası karışmasın diye robot hep sahaya göre sürülür.
         () -> true));
 
+    // PATHPLANNER NAMED COMMANDS (İsimli Komutlar)
+    // Otonom çizerken "IntakeAl" dediğinde hangi kod çalışsın?
+    // Şimdilik boş, ama ileride buraya Intake komutlarını ekleyeceğiz.
+    // NamedCommands.registerCommand("IntakeAl", new IntakeCommand());
+
+    // OTONOM SEÇİCİYİ OLUŞTUR
+    // PathPlanner "deploy/pathplanner/autos" klasöründeki dosyaları okur.
     m_autoChooser = AutoBuilder.buildAutoChooser();
+
+    // Dashboard'a koy
     SmartDashboard.putData("Auto Chooser", m_autoChooser);
 
+    // Tuş atamalarını yap
     configureBindings();
   }
 
+  /**
+   * TUŞ ATAMALARI (Button Bindings)
+   * Joystick üzerindeki tuşlara görev atıyoruz.
+   */
   private void configureBindings() {
-    // Y TUŞU: GYRO SIFIRLAMA
+
+    // GYRO SIFIRLAMA (Y Tuşu)
+    // Maç sırasında robotun "Önü" karışırsa, pilot Y tuşuna basıp düzeltir.
     new JoystickButton(m_driverController, XboxController.Button.kY.value)
         .onTrue(new RunCommand(() -> m_robotDrive.zeroHeading(), m_robotDrive));
 
-    // A TUŞU: SAVUNMA MODU (X-STANCE)
+    // SAVUNMA MODU / X-STANCE (A Tuşu)
+    // Pilot A tuşuna basılı tuttuğu sürece tekerlekler X şeklini alır ve
+    // kilitlenir.
+    // Rakip robot bizi itmeye çalışırsa yerimizden kıpırdamayız.
     new JoystickButton(m_driverController, XboxController.Button.kA.value)
         .whileTrue(new RunCommand(() -> m_robotDrive.stopModules(), m_robotDrive));
-
-    // X TUŞU: APRIL TAG HİZALAMA (Savaş Modu - Basılı tutunca Limelight devralır)
-    new JoystickButton(m_driverController, XboxController.Button.kX.value)
-        .whileTrue(new AlignToTagCMD(m_robotDrive, m_limelight));
-
-    // B TUŞU: SHOOTER'I ÇALIŞTIR (Basılı tutunca ateşler)
-    new JoystickButton(m_driverController, XboxController.Button.kB.value)
-        .whileTrue(new RunCommand(() -> m_shooter.runFixed(false), m_shooter))
-        .onFalse(new RunCommand(() -> m_shooter.stop(), m_shooter));
-        
-    // Sağ Tampon (Right Bumper): İNDEXER'I TERS ÇALIŞTIR (Sıkışma açmak için)
-    new JoystickButton(m_driverController, XboxController.Button.kRightBumper.value)
-        .whileTrue(new RunCommand(() -> m_shooter.runFixed(true), m_shooter))
-        .onFalse(new RunCommand(() -> m_shooter.stop(), m_shooter));
   }
 
+  /**
+   * OTONOM KOMUTU
+   * Maçın ilk 15 saniyesinde çalışacak komut.
+   * Şimdilik null döndürüyoruz, sonra PathPlanner ekleyeceğiz.
+   */
   public Command getAutonomousCommand() {
+    // Seçili otonomu döndür
     return m_autoChooser.getSelected();
   }
 }
